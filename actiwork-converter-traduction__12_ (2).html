@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertisseur Cartouche Actiwork - Avec Traduction</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+        
+        .logo span {
+            color: #e63946;
+        }
+        
+        .subtitle {
+            color: #a8a8a8;
+            font-size: 1.1em;
+        }
+        
+        .card {
+            background: #fff;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e63946;
+        }
+        
+        .upload-zone {
+            border: 3px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 30px;
+        }
+        
+        .upload-zone:hover {
+            border-color: #e63946;
+            background: #fef2f2;
+        }
+        
+        .upload-zone.dragover {
+            border-color: #e63946;
+            background: #fef2f2;
+        }
+        
+        .upload-zone.has-file {
+            border-color: #22c55e;
+            background: #f0fdf4;
+        }
+        
+        .upload-icon {
+            font-size: 3em;
+            color: #ccc;
+            margin-bottom: 15px;
+        }
+        
+        .upload-zone.has-file .upload-icon {
+            color: #22c55e;
+        }
+        
+        .upload-text {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .file-name {
+            color: #22c55e;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .form-group input, .form-group select {
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #e63946;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f0f9ff;
+            border-radius: 8px;
+            border: 2px solid #0ea5e9;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .checkbox-group label {
+            font-weight: 600;
+            color: #0369a1;
+            cursor: pointer;
+        }
+        
+        .btn-convert {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #e63946 0%, #c1121f 100%);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .btn-convert:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(230, 57, 70, 0.4);
+        }
+        
+        .btn-convert:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #e63946;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .error.show {
+            display: block;
+        }
+        
+        .success {
+            background: #f0fdf4;
+            color: #22c55e;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .success.show {
+            display: block;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+            display: none;
+        }
+        
+        .progress-bar.show {
+            display: block;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #e63946 0%, #c1121f 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-text {
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .cartouche-preview {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .cartouche-preview h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        #cartoucheCanvas {
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+        }
+        
+        @media (max-width: 600px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">Acti<span>work</span></div>
+            <div class="subtitle">Convertisseur de cartouche pour plans fournisseurs</div>
+        </div>
+        
+        <div class="card">
+            <h2 class="section-title">📄 Fichier PDF</h2>
+            
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">
+                    Glissez-déposez votre PDF ici<br>
+                    ou cliquez pour sélectionner
+                </div>
+                <div class="file-name" id="fileName"></div>
+                <input type="file" id="pdfInput" accept=".pdf">
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="translateCheckbox" checked>
+                <label for="translateCheckbox">🌐 Traduire les textes anglais en français</label>
+            </div>
+            
+            <h2 class="section-title">✏️ Informations du cartouche</h2>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="dessinateur">Dessinateur</label>
+                    <input type="text" id="dessinateur" placeholder="Nom du dessinateur">
+                </div>
+                
+                <div class="form-group">
+                    <label for="date_creation">Date de création</label>
+                    <input type="text" id="date_creation" placeholder="JJ/MM/AAAA">
+                </div>
+                
+                <div class="form-group">
+                    <label for="plan_validation">Plan de validation</label>
+                    <input type="text" id="plan_validation" placeholder="N° de validation">
+                </div>
+                
+                <div class="form-group">
+                    <label for="client">Client</label>
+                    <input type="text" id="client" placeholder="Nom du client">
+                </div>
+            </div>
+            
+            <div class="cartouche-preview">
+                <h4>Aperçu du cartouche :</h4>
+                <canvas id="cartoucheCanvas" width="800" height="240"></canvas>
+            </div>
+            
+            <button class="btn-convert" id="btnConvert" disabled>
+                🔄 Convertir le PDF
+            </button>
+            
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText"></div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>Conversion en cours, veuillez patienter...</div>
+            </div>
+            
+            <div class="error" id="error"></div>
+            <div class="success" id="success">
+                ✅ Conversion réussie ! Le téléchargement va démarrer...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
+        const { jsPDF } = window.jspdf;
+        
+        // Fonction de traduction via API MyMemory (gratuit, pas de clé requise)
+        async function translateText(text) {
+            if (!text || text.trim().length < 2) return text;
+            
+            // Ne pas traduire les chiffres seuls, les symboles
+            if (/^[\d\s\.\,\-\+\×\÷\=\(\)\[\]\{\}\°\%\@\#\$\€\£\¥\/\\Øø°x:]+$/.test(text)) {
+                return text;
+            }
+            
+            try {
+                const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|fr`);
+                const data = await response.json();
+                
+                if (data.responseStatus === 200 && data.responseData.translatedText) {
+                    let translated = data.responseData.translatedText;
+                    
+                    // Préserver la casse
+                    if (text === text.toUpperCase()) {
+                        translated = translated.toUpperCase();
+                    } else if (text[0] === text[0].toUpperCase()) {
+                        translated = translated.charAt(0).toUpperCase() + translated.slice(1);
+                    }
+                    
+                    return translated;
+                }
+                return text;
+            } catch (e) {
+                console.warn('Erreur de traduction pour:', text, e);
+                return text;
+            }
+        }
+        
+        // Cache pour éviter de retraduire les mêmes textes
+        const translationCache = new Map();
+        
+        // Configuration du cartouche
+        const CARTOUCHE_CONFIG = {
+            width: 800,
+            height: 220,
+            address: [
+                '260 Rue des Barronnières',
+                '01 700 BEYNOST France',
+                'Tél : 04 72 01 50 60',
+                'Fax : 04 78 88 39 01'
+            ],
+            legalText: 'Ce plan est la propriété de la Société Actiwork, toute la représentation même partielle sans l\'accord au préalable de cette dernière est formellement interdites et est passible de poursuites judiciaires'
+        };
+        
+        // Dessiner le cartouche
+        function drawCartouche(ctx, fields, pageNum, totalPages) {
+            const w = CARTOUCHE_CONFIG.width;
+            const h = CARTOUCHE_CONFIG.height;
+            
+            // Fond blanc
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, w, h);
+            
+            // Bordures
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(1, 1, w-2, h-2);
+            
+            // Lignes de séparation verticales
+            ctx.beginPath();
+            ctx.moveTo(200, 0);
+            ctx.lineTo(200, 180);
+            ctx.moveTo(500, 0);
+            ctx.lineTo(500, 180);
+            ctx.moveTo(650, 0);
+            ctx.lineTo(650, 180);
+            ctx.stroke();
+            
+            // Lignes de séparation horizontales
+            ctx.beginPath();
+            ctx.moveTo(200, 60);
+            ctx.lineTo(w, 60);
+            ctx.moveTo(200, 120);
+            ctx.lineTo(w, 120);
+            ctx.moveTo(0, 180);
+            ctx.lineTo(w, 180);
+            ctx.stroke();
+            
+            // Logo Actiwork
+            ctx.font = 'bold 36px Arial';
+            ctx.fillStyle = 'black';
+            ctx.fillText('Acti', 30, 50);
+            ctx.fillStyle = '#e63946';
+            ctx.fillText('work', 95, 50);
+            
+            // Adresse
+            ctx.font = '11px Arial';
+            ctx.fillStyle = 'black';
+            CARTOUCHE_CONFIG.address.forEach((line, i) => {
+                ctx.fillText(line, 30, 85 + i * 18);
+            });
+            
+            // Symboles (simplifié)
+            ctx.font = '20px Arial';
+            ctx.fillText('⊳ ⊕', 80, 165);
+            
+            // Labels
+            ctx.font = '12px Arial';
+            ctx.fillStyle = '#666';
+            ctx.fillText('Dessinateur :', 210, 25);
+            ctx.fillText('Date de création :', 510, 25);
+            ctx.fillText('Plan de validation', 280, 85);
+            ctx.fillText('Client :', 510, 85);
+            ctx.fillText('Page :', 660, 145);
+            
+            // Valeurs des champs
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = 'black';
+            ctx.fillText(fields.dessinateur || '', 210, 48);
+            ctx.fillText(fields.date_creation || '', 510, 48);
+            ctx.fillText(fields.plan_validation || '', 210, 108);
+            ctx.fillText(fields.client || '', 510, 108);
+            ctx.fillText(pageNum + '/' + totalPages, 700, 165);
+            
+            // Texte légal
+            ctx.font = '8px Arial';
+            ctx.fillStyle = '#666';
+            const legalLines = wrapText(ctx, CARTOUCHE_CONFIG.legalText, w - 220, 8);
+            legalLines.forEach((line, i) => {
+                ctx.fillText(line, 210, 198 + i * 12);
+            });
+        }
+        
+        // Fonction pour wrapper le texte
+        function wrapText(ctx, text, maxWidth, fontSize) {
+            const words = text.split(' ');
+            const lines = [];
+            let currentLine = '';
+            
+            ctx.font = fontSize + 'px Arial';
+            
+            for (const word of words) {
+                const testLine = currentLine + (currentLine ? ' ' : '') + word;
+                const metrics = ctx.measureText(testLine);
+                
+                if (metrics.width > maxWidth && currentLine) {
+                    lines.push(currentLine);
+                    currentLine = word;
+                } else {
+                    currentLine = testLine;
+                }
+            }
+            
+            if (currentLine) {
+                lines.push(currentLine);
+            }
+            
+            return lines;
+        }
+        
+        // Obtenir les valeurs des champs
+        function getFields() {
+            return {
+                dessinateur: document.getElementById('dessinateur').value,
+                date_creation: document.getElementById('date_creation').value,
+                plan_validation: document.getElementById('plan_validation').value,
+                client: document.getElementById('client').value
+            };
+        }
+        
+        // Éléments DOM
+        const uploadZone = document.getElementById('uploadZone');
+        const pdfInput = document.getElementById('pdfInput');
+        const fileName = document.getElementById('fileName');
+        const btnConvert = document.getElementById('btnConvert');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const success = document.getElementById('success');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const cartoucheCanvas = document.getElementById('cartoucheCanvas');
+        const translateCheckbox = document.getElementById('translateCheckbox');
+        
+        let pdfFile = null;
+        let pdfFileName = '';
+        
+        // Mettre à jour l'aperçu du cartouche
+        function updateCartouchePreview() {
+            const ctx = cartoucheCanvas.getContext('2d');
+            drawCartouche(ctx, getFields(), 1, 1);
+        }
+        
+        // Écouter les changements de champs
+        document.querySelectorAll('input[type="text"]').forEach(input => {
+            input.addEventListener('input', updateCartouchePreview);
+        });
+        
+        // Initialiser avec la date du jour
+        const today = new Date();
+        document.getElementById('date_creation').value = 
+            String(today.getDate()).padStart(2, '0') + '/' +
+            String(today.getMonth() + 1).padStart(2, '0') + '/' +
+            today.getFullYear();
+        
+        updateCartouchePreview();
+        
+        // Gestion de l'upload
+        uploadZone.addEventListener('click', () => pdfInput.click());
+        
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+        
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+        
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === 'application/pdf') {
+                handleFile(files[0]);
+            }
+        });
+        
+        pdfInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        function handleFile(file) {
+            pdfFile = file;
+            pdfFileName = file.name;
+            fileName.textContent = file.name;
+            uploadZone.classList.add('has-file');
+            btnConvert.disabled = false;
+        }
+        
+        // Conversion
+        btnConvert.addEventListener('click', async () => {
+            if (!pdfFile) return;
+            
+            error.classList.remove('show');
+            success.classList.remove('show');
+            loading.classList.add('show');
+            progressBar.classList.add('show');
+            btnConvert.disabled = true;
+            
+            try {
+                const arrayBuffer = await pdfFile.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const totalPages = pdf.numPages;
+                
+                // Créer le nouveau PDF en A3 paysage
+                const newPdf = new jsPDF({
+                    orientation: 'landscape',
+                    unit: 'mm',
+                    format: 'a3'
+                });
+                
+                const a3Width = 420; // mm
+                const a3Height = 297; // mm
+                
+                const fields = getFields();
+                const shouldTranslate = translateCheckbox.checked;
+                
+                for (let i = 1; i <= totalPages; i++) {
+                    progressFill.style.width = ((i - 1) / totalPages * 100) + '%';
+                    progressText.textContent = `Traitement de la page ${i}/${totalPages}...`;
+                    
+                    if (i > 1) {
+                        newPdf.addPage('a3', 'landscape');
+                    }
+                    
+                    // Rendre la page PDF en canvas
+                    const page = await pdf.getPage(i);
+                    const scale = 2;
+                    const viewport = page.getViewport({ scale });
+                    
+                    const canvas = document.createElement('canvas');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    const ctx = canvas.getContext('2d');
+                    
+                    await page.render({
+                        canvasContext: ctx,
+                        viewport: viewport
+                    }).promise;
+                    
+                    // Si traduction activée, extraire et traduire le texte
+                    if (shouldTranslate) {
+                        progressText.textContent = `Traduction de la page ${i}/${totalPages}...`;
+                        
+                        const textContent = await page.getTextContent();
+                        
+                        // Construire une map fontName -> isBold
+                        // PDF.js expose les infos de police dans textContent.styles
+                        // et dans item.fontName. On cherche "Bold" partout.
+                        const fontBoldMap = new Map();
+                        
+                        // Source 1 : textContent.styles (fontFamily peut contenir "Bold")
+                        if (textContent.styles) {
+                            for (const [fontId, styleInfo] of Object.entries(textContent.styles)) {
+                                const fontFamily = (styleInfo.fontFamily || '').toLowerCase();
+                                const isBold = fontFamily.includes('bold') || fontFamily.includes('heavy') || fontFamily.includes('black') || fontFamily.includes('demi');
+                                fontBoldMap.set(fontId, isBold);
+                            }
+                        }
+                        
+                        // Source 2 : item.fontName brut (parfois contient "Bold" directement)
+                        for (const item of textContent.items) {
+                            if (item.fontName && !fontBoldMap.get(item.fontName)) {
+                                const fn = item.fontName.toLowerCase();
+                                if (fn.includes('bold') || fn.includes('heavy') || fn.includes('black') || fn.includes('demi')) {
+                                    fontBoldMap.set(item.fontName, true);
+                                }
+                            }
+                        }
+                        
+                        // Source 3 : résoudre les fonts via page.commonObjs pour récupérer le vrai nom PostScript
+                        // PDF.js stocke les objets font avec leur nom complet (ex: "NJSJCD+CenturyGothic,Bold")
+                        const uniqueFontNames = new Set();
+                        for (const item of textContent.items) {
+                            if (item.fontName) uniqueFontNames.add(item.fontName);
+                        }
+                        for (const fontName of uniqueFontNames) {
+                            if (fontBoldMap.get(fontName)) continue; // déjà détecté comme bold
+                            try {
+                                const fontObj = page.commonObjs.get(fontName);
+                                if (fontObj) {
+                                    // fontObj peut avoir .name, .loadedName, .data.name, etc.
+                                    const names = [
+                                        fontObj.name, 
+                                        fontObj.loadedName,
+                                        fontObj.data?.name,
+                                        fontObj.data?.fontName,
+                                        fontObj.data?.baseFontName
+                                    ].filter(Boolean);
+                                    for (const n of names) {
+                                        if (n.toLowerCase().includes('bold') || n.toLowerCase().includes('heavy')) {
+                                            fontBoldMap.set(fontName, true);
+                                            break;
+                                        }
+                                    }
+                                }
+                            } catch(e) { /* font obj pas encore chargé, on ignore */ }
+                        }
+                        
+                        console.log('fontBoldMap:', Object.fromEntries(fontBoldMap));
+                        
+                        // Collecter tous les textes uniques à traduire
+                        const textsToTranslate = new Set();
+                        for (const item of textContent.items) {
+                            if (item.str && item.str.trim() && item.str.trim().length > 1) {
+                                // Ne pas traduire les chiffres seuls
+                                if (!/^[\d\s\.\,\-\+\×\÷\=\(\)\[\]\{\}\°\%\@\#\$\€\£\¥\/\\]+$/.test(item.str)) {
+                                    textsToTranslate.add(item.str);
+                                }
+                            }
+                        }
+                        
+                        // Traduire tous les textes (avec cache)
+                        const translations = new Map();
+                        let translatedCount = 0;
+                        const totalToTranslate = textsToTranslate.size;
+                        
+                        for (const text of textsToTranslate) {
+                            translatedCount++;
+                            progressText.textContent = `Traduction ${translatedCount}/${totalToTranslate} (page ${i}/${totalPages})...`;
+                            
+                            if (translationCache.has(text)) {
+                                translations.set(text, translationCache.get(text));
+                            } else {
+                                const translated = await translateText(text);
+                                translations.set(text, translated);
+                                translationCache.set(text, translated);
+                                
+                                // Petite pause pour ne pas surcharger l'API
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                            }
+                        }
+                        
+                        // Appliquer les traductions sur le canvas
+                        // APPROCHE : masquer et réécrire TOUS les textes pour éviter les coupures
+                        // SAUF les chiffres seuls (dimensions) qui cassent les traits de cote
+                        
+                        // Regex pour détecter les textes qui sont des dimensions/chiffres/symboles seuls
+                        const isDimension = (str) => /^[\d\s\.\,\-\+\×\÷\=\(\)\[\]\{\}\°\%\@\#\$\€\£\¥\/\\Øø°x:]+$/.test(str.trim());
+                        
+                        // Première passe : masquer les textes (SAUF dimensions)
+                        for (const item of textContent.items) {
+                            if (item.str && item.str.trim() && !isDimension(item.str)) {
+                                const tx = item.transform[4] * scale;
+                                const ty = canvas.height - (item.transform[5] * scale);
+                                const fontSize = Math.abs(item.transform[0]) * scale;
+                                
+                                let textWidth;
+                                if (item.width) {
+                                    textWidth = item.width * scale;
+                                } else {
+                                    textWidth = item.str.length * fontSize * 0.7;
+                                }
+                                
+                                // Masquer avec rectangle blanc
+                                ctx.fillStyle = 'white';
+                                ctx.fillRect(
+                                    tx - 2,
+                                    ty - fontSize * 1.2,
+                                    textWidth + 4,
+                                    fontSize * 2
+                                );
+                            }
+                        }
+                        
+                        // Deuxième passe : réécrire les textes (SAUF dimensions)
+                        // D'abord, regrouper les textes par blocs (proximité verticale)
+                        const textItems = [];
+                        for (const item of textContent.items) {
+                            if (item.str && item.str.trim() && !isDimension(item.str)) {
+                                const tx = item.transform[4] * scale;
+                                const ty = canvas.height - (item.transform[5] * scale);
+                                const fontSize = Math.abs(item.transform[0]) * scale;
+                                
+                                let textToWrite = item.str;
+                                if (translations.has(item.str) && translations.get(item.str) !== item.str) {
+                                    textToWrite = translations.get(item.str);
+                                }
+                                
+                                textItems.push({ tx, ty, fontSize, textToWrite, originalFontSize: fontSize, isBold: !!(item.fontName && fontBoldMap.get(item.fontName)) });
+                            }
+                        }
+                        
+                        // Regrouper par blocs : textes proches en X et Y continu
+                        const blocks = [];
+                        const used = new Set();
+                        
+                        for (let a = 0; a < textItems.length; a++) {
+                            if (used.has(a)) continue;
+                            const block = [textItems[a]];
+                            used.add(a);
+                            
+                            // Chercher tous les textes proches (même colonne X ± 100px, Y continu)
+                            let changed = true;
+                            while (changed) {
+                                changed = false;
+                                for (let b = 0; b < textItems.length; b++) {
+                                    if (used.has(b)) continue;
+                                    // Vérifier si ce texte est proche d'un élément du bloc
+                                    for (const member of block) {
+                                        const dx = Math.abs(textItems[b].tx - member.tx);
+                                        const dy = Math.abs(textItems[b].ty - member.ty);
+                                        // Même zone : proche en X (< 400px) et en Y (< 80px d'un membre)
+                                        if (dx < 400 && dy < 80) {
+                                            block.push(textItems[b]);
+                                            used.add(b);
+                                            changed = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            blocks.push(block);
+                        }
+                        
+                        // Pour chaque bloc, calculer le ratio de réduction minimum
+                        for (const block of blocks) {
+                            let minRatio = 1;
+                            
+                            for (const item of block) {
+                                const fontWeight = item.isBold ? 'bold ' : '';
+                                ctx.font = `${fontWeight}${item.fontSize}px Arial`;
+                                const textWidth = ctx.measureText(item.textToWrite).width;
+                                const maxWidth = canvas.width - item.tx - 10;
+                                
+                                if (maxWidth > 0 && textWidth > maxWidth) {
+                                    const ratio = maxWidth / textWidth;
+                                    if (ratio < minRatio) {
+                                        minRatio = ratio;
+                                    }
+                                }
+                            }
+                            
+                            // Appliquer le même ratio à tout le bloc
+                            for (const item of block) {
+                                const adjustedFontSize = item.fontSize * minRatio;
+                                const fontWeight = item.isBold ? 'bold ' : '';
+                                
+                                ctx.fillStyle = 'black';
+                                ctx.font = `${fontWeight}${adjustedFontSize}px Arial`;
+                                ctx.fillText(item.textToWrite, item.tx, item.ty);
+                            }
+                        }
+                    }
+                    
+                    // Masquer le cartouche fournisseur (zone en bas à droite - élargi)
+                    const maskX = canvas.width * 0.58;
+                    const maskY = canvas.height * 0.82;
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(maskX, maskY, canvas.width - maskX, canvas.height - maskY);
+                    
+                    // Dessiner le cartouche Actiwork
+                    const cartoucheW = canvas.width * 0.38;
+                    const cartoucheH = cartoucheW * (CARTOUCHE_CONFIG.height / CARTOUCHE_CONFIG.width);
+                    const cartoucheX = canvas.width - cartoucheW - 10;
+                    const cartoucheY = canvas.height - cartoucheH - 10;
+                    
+                    // Créer un canvas temporaire pour le cartouche
+                    const cartoucheCanvasTemp = document.createElement('canvas');
+                    cartoucheCanvasTemp.width = CARTOUCHE_CONFIG.width;
+                    cartoucheCanvasTemp.height = CARTOUCHE_CONFIG.height;
+                    const cartoucheCtx = cartoucheCanvasTemp.getContext('2d');
+                    drawCartouche(cartoucheCtx, fields, i, totalPages);
+                    
+                    // Dessiner le cartouche sur la page
+                    ctx.drawImage(cartoucheCanvasTemp, cartoucheX, cartoucheY, cartoucheW, cartoucheH);
+                    
+                    // Bordures du cartouche
+                    ctx.strokeStyle = 'black';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(cartoucheX, cartoucheY, cartoucheW, cartoucheH);
+                    
+                    // Ajouter l'image au PDF
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    newPdf.addImage(imgData, 'JPEG', 0, 0, a3Width, a3Height);
+                }
+                
+                progressFill.style.width = '100%';
+                progressText.textContent = 'Génération du PDF...';
+                
+                // Télécharger le PDF
+                const outputFileName = pdfFileName.replace(/\.pdf$/i, '_ACTIWORK.pdf');
+                newPdf.save(outputFileName);
+                
+                success.classList.add('show');
+                
+            } catch (err) {
+                console.error(err);
+                error.textContent = '❌ Erreur lors de la conversion : ' + err.message;
+                error.classList.add('show');
+            } finally {
+                loading.classList.remove('show');
+                progressBar.classList.remove('show');
+                btnConvert.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
